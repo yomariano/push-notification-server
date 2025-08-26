@@ -57,6 +57,37 @@ validateVapidKeys();
 // Store subscriptions (in production, use a database)
 let subscriptions = [];
 
+// Helper function to handle OneSignal API responses
+function handleOneSignalResponse(oneSignalResult, oneSignalResponse, context = '') {
+  const errors = oneSignalResult.errors || [];
+  const isNoSubscribersError = errors.some(error => 
+    error.includes('All included players are not subscribed') ||
+    error.includes('No subscribed players')
+  );
+  
+  if (!oneSignalResponse.ok) {
+    if (isNoSubscribersError) {
+      return {
+        isNoSubscribers: true,
+        error: {
+          success: false,
+          message: `No OneSignal subscribers available${context}`,
+          error: 'NO_SUBSCRIBERS',
+          hint: 'Users need to subscribe to OneSignal notifications first',
+          details: oneSignalResult
+        }
+      };
+    }
+    throw new Error(`OneSignal API error: ${oneSignalResult.errors || 'Unknown error'}`);
+  }
+  
+  return {
+    isNoSubscribers: false,
+    success: true,
+    result: oneSignalResult
+  };
+}
+
 console.log('🚀 Push Notification Server Starting...');
 console.log('📧 VAPID Email: notifications@signalstrading.app');
 console.log('🔑 VAPID Public Key:', VAPID_PUBLIC_KEY.substring(0, 30) + '...');
@@ -384,7 +415,14 @@ app.post('/api/onesignal-broadcast', async (req, res) => {
     const oneSignalResult = await oneSignalResponse.json();
     console.log('📊 OneSignal broadcast response:', oneSignalResult);
     
-    if (oneSignalResponse.ok && oneSignalResult.id) {
+    const responseHandler = handleOneSignalResponse(oneSignalResult, oneSignalResponse, ' for broadcast');
+    
+    if (responseHandler.isNoSubscribers) {
+      console.log('⚠️ No OneSignal subscribers found for broadcast');
+      return res.json(responseHandler.error);
+    }
+    
+    if (responseHandler.success && oneSignalResult.id) {
       console.log('✅ OneSignal broadcast sent successfully:', oneSignalResult.id);
       res.json({
         success: true,
@@ -392,8 +430,6 @@ app.post('/api/onesignal-broadcast', async (req, res) => {
         notificationId: oneSignalResult.id,
         recipients: oneSignalResult.recipients || 'all'
       });
-    } else {
-      throw new Error(`OneSignal API error: ${oneSignalResult.errors || 'Unknown error'}`);
     }
     
   } catch (error) {
@@ -482,8 +518,15 @@ app.post('/api/trading-signal', async (req, res) => {
     
     const result = await notificationResult.json();
     
-    if (!notificationResult.ok) {
-      throw new Error(`OneSignal API error: ${result.errors || JSON.stringify(result)}`);
+    const responseHandler = handleOneSignalResponse(result, notificationResult, ' for trading signal');
+    
+    if (responseHandler.isNoSubscribers) {
+      console.log('⚠️ No OneSignal subscribers found for trading signal');
+      return res.json({
+        ...responseHandler.error,
+        signal: { symbol, action, price, confidence },
+        notified: false
+      });
     }
     
     res.json({
