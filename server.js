@@ -65,19 +65,23 @@ function handleOneSignalResponse(oneSignalResult, oneSignalResponse, context = '
     error.includes('No subscribed players')
   );
   
+  // Check for no subscribers error EVEN if response.ok is true
+  // OneSignal returns 200 OK with errors array when no subscribers exist
+  if (isNoSubscribersError) {
+    console.log(`⚠️ OneSignal no subscribers detected${context}:`, oneSignalResult);
+    return {
+      isNoSubscribers: true,
+      error: {
+        success: false,
+        message: `No OneSignal subscribers available${context}`,
+        error: 'NO_SUBSCRIBERS',
+        hint: 'Users need to subscribe to OneSignal notifications first',
+        details: oneSignalResult
+      }
+    };
+  }
+  
   if (!oneSignalResponse.ok) {
-    if (isNoSubscribersError) {
-      return {
-        isNoSubscribers: true,
-        error: {
-          success: false,
-          message: `No OneSignal subscribers available${context}`,
-          error: 'NO_SUBSCRIBERS',
-          hint: 'Users need to subscribe to OneSignal notifications first',
-          details: oneSignalResult
-        }
-      };
-    }
     throw new Error(`OneSignal API error: ${oneSignalResult.errors || 'Unknown error'}`);
   }
   
@@ -310,6 +314,47 @@ app.delete('/api/subscriptions', (req, res) => {
     success: true,
     message: `Cleared ${count} subscriptions`
   });
+});
+
+// OneSignal debug endpoint to check subscriber count
+app.get('/api/onesignal-debug', async (req, res) => {
+  console.log('🔍 OneSignal debug request received');
+  
+  try {
+    // Try to get app info from OneSignal API
+    const appInfoResponse = await fetch(`https://onesignal.com/api/v1/apps/${ONESIGNAL_APP_ID}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Basic ${ONESIGNAL_API_KEY}`
+      }
+    });
+    
+    const appInfo = await appInfoResponse.json();
+    console.log('📊 OneSignal app info:', appInfo);
+    
+    res.json({
+      success: true,
+      appId: ONESIGNAL_APP_ID,
+      appInfo: appInfo,
+      apiKeyConfigured: !!ONESIGNAL_API_KEY,
+      subscriberCount: appInfo.players || 0,
+      debug: {
+        hasApiKey: !!ONESIGNAL_API_KEY,
+        apiKeyLength: ONESIGNAL_API_KEY ? ONESIGNAL_API_KEY.length : 0,
+        appInfoResponse: appInfoResponse.ok
+      }
+    });
+    
+  } catch (error) {
+    console.error('❌ OneSignal debug failed:', error);
+    res.status(500).json({
+      error: 'OneSignal debug failed',
+      message: error.message,
+      appId: ONESIGNAL_APP_ID,
+      apiKeyConfigured: !!ONESIGNAL_API_KEY
+    });
+  }
 });
 
 // Send to specific OneSignal user
