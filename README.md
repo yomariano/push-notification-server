@@ -35,18 +35,30 @@ Dedicated backend API server for handling push notifications with OneSignal inte
 
 ## Environment Variables
 
+### Required Environment Variables
+
 ```bash
-# VAPID Keys for Web Push
-VAPID_PUBLIC_KEY=your_vapid_public_key
-VAPID_PRIVATE_KEY=your_vapid_private_key
+# VAPID Keys for Web Push (generate with: node generate-vapid-keys.js)
+VAPID_PUBLIC_KEY=BKhUZoM0Nd6ScZGQ_l5jXlUs8BVKmKzBANjIdrgmFsVEILjhncdmd7N-UeLZrIsfYRa1nbM-yAE3KCO1gsMd3PM
+VAPID_PRIVATE_KEY=LQ1VafNgm92oY3tmBvxNJEKr5iwCj80qO3Do_7yoZDs
 
 # OneSignal Configuration  
-ONESIGNAL_API_KEY=your_onesignal_api_key
+ONESIGNAL_API_KEY=os_v2_app_7cgvvzhhmzdb7pyasbyhyg4fb2rzzg2wgopebeeod643vm43qbfradrvoiqqgev2sdvay5f7ho2yinxlgbvf355inm6ndr6fpzuzglq
 
 # Server Configuration
 PORT=3000
 NODE_ENV=production
 ```
+
+### Generate VAPID Keys
+
+To generate your own VAPID keys (recommended for production):
+
+```bash
+node generate-vapid-keys.js
+```
+
+This will generate a new pair of VAPID keys that you should use in your environment variables.
 
 ## Quick Start
 

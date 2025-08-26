@@ -20,20 +20,39 @@ app.use(cors({
 }));
 app.use(express.json());
 
-// VAPID keys (from environment or fallback)
-const VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY || 'BLgcx_kxWLsqiOF6ZcgZZ1c9ULSo1bTV_rrFCQlHCZqdz2dpJYFSPd5wUVVD8tgi4o4BV-chSiGP3OEIXNLsDx8';
-const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY || 'sizcnc28kg3nc3OpnRFNakszfutZiwZEeD-Y8yPVDRg';
+// VAPID keys (from environment)
+const VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY || 'BKhUZoM0Nd6ScZGQ_l5jXlUs8BVKmKzBANjIdrgmFsVEILjhncdmd7N-UeLZrIsfYRa1nbM-yAE3KCO1gsMd3PM';
+const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY || 'LQ1VafNgm92oY3tmBvxNJEKr5iwCj80qO3Do_7yoZDs';
 
 // OneSignal configuration
 const ONESIGNAL_APP_ID = 'f88d5ae4-e766-461f-bf00-90707c1b850e';
 const ONESIGNAL_API_KEY = process.env.ONESIGNAL_API_KEY || 'os_v2_app_7cgvvzhhmzdb7pyasbyhyg4fb2rzzg2wgopebeeod643vm43qbfradrvoiqqgev2sdvay5f7ho2yinxlgbvf355inm6ndr6fpzuzglq';
 
-// Configure web-push with VAPID details
-webpush.setVapidDetails(
-  'mailto:notifications@signalstrading.app',
-  VAPID_PUBLIC_KEY,
-  VAPID_PRIVATE_KEY
-);
+// Validate VAPID keys before configuring web-push
+function validateVapidKeys() {
+  if (!VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY) {
+    console.error('❌ VAPID keys are missing from environment variables');
+    console.error('💡 Generate new keys with: node generate-vapid-keys.js');
+    process.exit(1);
+  }
+  
+  try {
+    // Configure web-push with VAPID details
+    webpush.setVapidDetails(
+      'mailto:notifications@signalstrading.app',
+      VAPID_PUBLIC_KEY,
+      VAPID_PRIVATE_KEY
+    );
+    console.log('✅ VAPID keys configured successfully');
+  } catch (error) {
+    console.error('❌ Invalid VAPID keys:', error.message);
+    console.error('💡 Generate new keys with: node generate-vapid-keys.js');
+    process.exit(1);
+  }
+}
+
+// Validate and configure VAPID keys
+validateVapidKeys();
 
 // Store subscriptions (in production, use a database)
 let subscriptions = [];
